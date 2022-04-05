@@ -138,7 +138,7 @@ elev <- elev[which(na_vector == 0)]
 
 #precip_forloop <- ((1 + (lapse_rate*((min(elev, na.rm = T)/1000) - (elev/1000))))/(1 - (lapse_rate*((min(elev, na.rm = T)/1000) - (elev/1000)))))*precip_forloop
 
-precip_forloop <- ((((min(elev, na.rm = T)/1000) - (elev/1000))*lapse_rate)*precip_forloop)+precip_forloop
+precip_forloop <- ((((mean(elev, na.rm = T)/1000) - (elev/1000))*lapse_rate)*precip_forloop)+precip_forloop
 
 
 
@@ -345,7 +345,7 @@ pixel_lapse_unc_multiplier <- vector(length = nrow(srtm_points))
     order_e <- order(interp_hor_nona)
 
 
-    #Interpolate elevation using bilinear interpolation of nearest 4 stations
+    #Interpolate elevation using bilinear interpolation of nearest 12 stations
 
     dist_elev <- interp_hor_nona[order_e][1:12]
 
