@@ -52,7 +52,10 @@ coordinates(srtm_points) <- ~ x + y
 days <- seq(as.POSIXct("1990-10-01", format = "%Y-%m-%d", tz = "GMT"),
             as.POSIXct("2020-09-30", format = "%Y-%m-%d", tz = "GMT"), by = 86400)
 
+
 #Choose period
+
+pb <- txtProgressBar(min = which(substr(days, 1, 10) == "2000-09-29"), max = which(substr(days, 1, 10) == "2001-09-30"), style = 3)
 
 monthly_precip <- stack()
 
@@ -62,7 +65,7 @@ lapse_rate_vector <- vector()
 
 lapse_uncertainty_vector <- vector()
 
-for (o in (which(substr(days, 1, 10) == "2019-12-31")):(which(substr(days, 1, 10) == "2020-01-31"))) {
+for (o in (which(substr(days, 1, 10) == "2019-09-30")):(which(substr(days, 1, 10) == "2020-09-30"))) {
 
 
 #Retrieve station information
@@ -83,7 +86,7 @@ na_vector <- ifelse(is.na(precip_date), 1, 0)
 precip_forloop <- precip_date[which(na_vector == 0)]
 
 
-#Retrieve daily lapse rate
+#Retrieve daily lapse rate (following Thornton et al., 1997)
 
 lapse_stations_lower <- c(154, 147, 149, 146, 99, 100, 41, 42, 167, 44, 44, 134, 134, 134, 68, 68, 179, 168, 49, 101, 101, 129, 125, 178, 180, 171, 171, 176, 176, 176, 181, 65, 65, 96, 77, 159, 28, 35, 36, 110, 139, 199, 138, 102, 80, 80, 80, 66, 66, 66, 143, 72, 182, 187, 183, 205, 194)
 
@@ -94,12 +97,12 @@ precip_reg <- (precip_date[lapse_stations_higher] - precip_date[lapse_stations_l
 
 precip_reg <- ifelse(precip_reg <= 0, NA, precip_reg)
 
-elev_diff_reg <- (elev[lapse_stations_higher] - elev[lapse_stations_lower])/1000
+elev_diff_reg <- abs(elev[lapse_stations_higher] - elev[lapse_stations_lower])/1000
 
 elev_diff_reg <- ifelse(elev_diff_reg > 0.2, elev_diff_reg, NA)
 
 
-if (sum(precip_reg, na.rm = T) == 0 | sum(!is.na(elev_diff_reg/precip_reg)) < 3) {
+if (sum(precip_reg, na.rm = T) == 0 || sum(!is.na(precip_reg)) < 3) {
 
   lapse_rate <- lapse_rate_vector[o-1]
 
@@ -110,20 +113,24 @@ if (sum(precip_reg, na.rm = T) == 0 | sum(!is.na(elev_diff_reg/precip_reg)) < 3)
   lapse_uncertainty_vector[o] <- lapse_uncertainty
 
 } else {
-
-  lapse_rate <- mean(elev_diff_reg/precip_reg, na.rm = T)
+  
+  #lapse_rate <- mean(elev_diff_reg/precip_reg, na.rm = T)
+  
+  lapse_rate <- mean(elev_diff_reg, na.rm = T)/mean(precip_reg, na.rm = T)
 
   lapse_rate <- ifelse(lapse_rate < 0, 0, lapse_rate)
 
-  #lapse_rate <- ifelse(lapse_rate > 1, 1, lapse_rate)
+  lapse_rate <- ifelse(lapse_rate > 0.4, 0.4, lapse_rate)
 
   lapse_rate_vector[o] <- lapse_rate
 
-  lapse_uncertainty <- sd(elev_diff_reg/precip_reg, na.rm = T)
+  #lapse_uncertainty <- sd(elev_diff_reg/precip_reg, na.rm = T)
+  
+  lapse_uncertainty <- mean(elev_diff_reg, na.rm = T)/sd(precip_reg, na.rm = T)
 
   lapse_uncertainty <- ifelse(lapse_uncertainty < 0, 0, lapse_uncertainty)
 
-  #lapse_uncertainty <- ifelse(lapse_uncertainty > 1, 1, lapse_uncertainty)
+  lapse_uncertainty <- ifelse(lapse_uncertainty > 0.4, 0.4, lapse_uncertainty)
 
   lapse_uncertainty_vector[o] <- lapse_uncertainty
 
@@ -136,10 +143,7 @@ lat <- lat[which(na_vector == 0)]
 long <- long[which(na_vector == 0)]
 elev <- elev[which(na_vector == 0)]
 
-#precip_forloop <- ((1 + (lapse_rate*((min(elev, na.rm = T)/1000) - (elev/1000))))/(1 - (lapse_rate*((min(elev, na.rm = T)/1000) - (elev/1000)))))*precip_forloop
-
-precip_forloop <- ((((mean(elev, na.rm = T)/1000) - (elev/1000))*lapse_rate)*precip_forloop)+precip_forloop
-
+precip_forloop <- ((1 + (lapse_rate*((min(elev, na.rm = T)/1000) - (elev/1000))))/(1 - (lapse_rate*((min(elev, na.rm = T)/1000) - (elev/1000)))))*precip_forloop
 
 
 #Transform precipitation from mm to normal distribution units
@@ -166,7 +170,10 @@ normal_dist[length(normal_dist)] <- ifelse(is.infinite(tail(normal_dist,1)),
 
 precip_normal_dist <- normal_dist
 
+
 #Remove duplicated precipitation
+
+if (length(duplica_index > 0)) {
 
 for (n in 0:((length(duplica_index)/2)-1)) {
 
@@ -174,7 +181,10 @@ for (n in 0:((length(duplica_index)/2)-1)) {
     rep(median(normal_dist[duplica_index[n*2 + 1]:duplica_index[n*2 + 2]]),
         length(normal_dist[duplica_index[n*2 + 1]:duplica_index[n*2 + 2]]))
 
+  }
+  
 }
+
 
 #Check the transformation
 
@@ -353,11 +363,14 @@ pixel_lapse_unc_multiplier <- vector(length = nrow(srtm_points))
 
     interp_elev <- sum((dist_elev*elev4), na.rm = T)/sum(dist_elev, na.rm = T)
 
-
+    
+    #Fixing for instability in the lapse rate equation for high lapse rates and elevation differences
+    
     pixel_lapse_multiplier[l] <- ((1 + (lapse_rate*((srtm_points$z[l]/1000) - (min(elev, na.rm = T)/1000))))/(1 - (lapse_rate*((srtm_points$z[l]/1000) - (min(elev, na.rm = T)/1000)))))
-
+      
     pixel_lapse_unc_multiplier[l] <- ((1 + (lapse_uncertainty*((srtm_points$z[l]/1000) - (min(elev, na.rm = T)/1000))))/(1 - (lapse_uncertainty*((srtm_points$z[l]/1000) - (min(elev, na.rm = T)/1000)))))
 
+    
     }
 
 
@@ -372,7 +385,7 @@ precip_dist_unique <- unique(precip_normal_dist)
 
 precip_dist_extra <- vector()
 
-for (m in 2:length(precip_dist_unique)) {
+for (m in 2:length(precip_mm_unique)) {
 
 precip_dist_extra <- append(precip_dist_extra, seq(precip_dist_unique[m-1], precip_dist_unique[m], abs(precip_dist_unique[m-1] - precip_dist_unique[m])/(precip_mm_diff[m-1]*100)))
 
@@ -407,6 +420,8 @@ precip_mm <- precip_mm*krig_zero_raster_std
 
 precip_lapsed_mm <- precip_mm*precip_lapse_multi
 
+precip_lapsed_mm[precip_lapsed_mm < 0] <- 0
+
 plot(precip_lapsed_mm, col = palette_1)
 
 
@@ -420,6 +435,8 @@ uncertainty_mm <- reclassify(sqrt(var_raster_hor), rec_matrix)
 
 uncertainty_lapsed_mm <- uncertainty_mm*precip_lapse_sd_multi
 
+uncertainty_lapsed_mm[uncertainty_lapsed_mm < 0] <- 0
+
 plot(uncertainty_lapsed_mm, col = rev(palette_2))
 
 
@@ -428,7 +445,11 @@ monthly_precip <- stack(monthly_precip, precip_lapsed_mm)
 monthly_sd <- stack(monthly_sd, uncertainty_lapsed_mm)
 
 
+Sys.sleep(0.0001)
+setTxtProgressBar(pb, o)
+
 }
+
 
 plot(sum(monthly_precip[[-c(1)]]), col = palette_1)
 
