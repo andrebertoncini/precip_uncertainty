@@ -30,7 +30,7 @@ srtm[srtm == 32767] <- NA
 
 #Crop DEM for faster processing
 
-crop_extent <- extent(c(-115.4, -115, 50.6, 51.1))
+crop_extent <- extent(c(-115.3, -115.2, 50.83, 50.89))
 
 srtm <- crop(srtm, crop_extent)
 
@@ -133,7 +133,7 @@ for (o in (which(substr(days, 1, 10) == "1990-10-01")):(which(substr(days, 1, 10
 #Choose period
 
 start <- "2019-10-01"
-end <- "2020-09-30"
+end <- "2019-10-31"
 
 pb <- txtProgressBar(min = which(substr(days, 1, 10) == start), max = which(substr(days, 1, 10) == end), style = 3)
 
@@ -554,9 +554,20 @@ plot(cv, col = rev(palette_2))
 plot(station_xyz, add = T)
 
 
-#Export rasters
+#Export lapse rate, lapse uncertainty, and RMSE
 
 yearmonth <- "201910"
+
+lapse_export <- data.frame(lapse_rate_vector[(which(substr(days, 1, 10) == start)):(which(substr(days, 1, 10) == end))],
+                lapse_uncertainty_vector[(which(substr(days, 1, 10) == start)):(which(substr(days, 1, 10) == end))],
+                pred_rmse_mm[(which(substr(days, 1, 10) == start)):(which(substr(days, 1, 10) == end))])
+
+colnames(lapse_export) <- c("lapse_rate", "lapse_uncertainty", "pred_rmse_mm")
+
+write.csv(lapse_export, file = paste0("lapse_export_", yearmonth, ".csv"))
+
+
+#Export rasters
 
 writeRaster(monthly_precip, filename = paste0("monthly_precip_", yearmonth), format = "GTiff", overwrite = T)
 
