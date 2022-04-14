@@ -137,11 +137,17 @@ for (o in (which(substr(days, 1, 10) == "1990-10-01")):(which(substr(days, 1, 10
   
 }  
 
+lapse_rate_vector[1] <- lapse_rate_vector[3]
+lapse_rate_vector[2] <- lapse_rate_vector[3]
+
+lapse_uncertainty_vector[1] <- lapse_uncertainty_vector[3]
+lapse_uncertainty_vector[2] <- lapse_uncertainty_vector[3]
+
 
 #Choose period
 
-start <- "2019-10-01"
-end <- "2019-10-31"
+start <- "1999-10-01"
+end <- "2000-09-30"
 
 pb <- txtProgressBar(min = which(substr(days, 1, 10) == start), max = which(substr(days, 1, 10) == end), style = 3)
 
@@ -285,6 +291,17 @@ vgm_model <- vgm$var_model
 
 pred.reg <- krige(precip_normal_dist ~ 1, normal_df, srtm_points, model = vgm_model, maxdist = 2, nmax = 8)
 
+if (substr(warnings()[length(warnings())], 1, 13) == "predict.gstat") {
+  
+  vgm <- autofitVariogram(precip_normal_dist ~ 1, normal_df, model = c("Mat"))
+  
+  vgm_model <- vgm$var_model
+  
+  pred.reg <- krige(precip_normal_dist ~ 1, normal_df, srtm_points, model = vgm_model, maxdist = 2, nmax = 8)
+  
+}
+
+
 krig_output <- as.data.frame(pred.reg)
 
 
@@ -345,6 +362,17 @@ vgm_model_zero <- vgm_zero$var_model
 
 
 pred.reg_zero <- krige(precip_zero ~ 1, precip_zero_df, srtm_points, model = vgm_model_zero, maxdist = 2, nmax = 8)
+
+if (substr(warnings()[length(warnings())], 1, 13) == "predict.gstat") {
+  
+  vgm_zero <- autofitVariogram(precip_zero ~ 1, precip_zero_df, model = c("Mat"))
+  
+  vgm_model_zero <- vgm_zero$var_model
+  
+  pred.reg_zero <- krige(precip_zero ~ 1, precip_zero_df, srtm_points, model = vgm_model_zero, maxdist = 2, nmax = 8)
+  
+}
+
 
 krig_output_zero <- as.data.frame(pred.reg_zero)
 
