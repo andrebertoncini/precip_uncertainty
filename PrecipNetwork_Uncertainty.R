@@ -21,6 +21,11 @@ precip_input <- ifelse(as.matrix(precip_input) > 160, NA, as.matrix(precip_input
 station_info <- read.csv("Station_Info_Inside_Domain_20210727.csv")[,-c(1)]
 
 
+#Load quadrant information
+
+quad_coord <- read.csv("Quadrants_Coordinates_20220414.csv", sep = ";")[,-c(1)]
+
+
 #Load DEM
 
 srtm <- raster("SRTM_90m_Tile_6.tif")
@@ -28,9 +33,12 @@ srtm <- raster("SRTM_90m_Tile_6.tif")
 srtm[srtm == -32768] <- NA
 srtm[srtm == 32767] <- NA
 
+
+for (q in 1:34) {
+
 #Crop DEM for faster processing
 
-crop_extent <- extent(c(-115.3, -115.2, 50.83, 50.89))
+crop_extent <- extent(c(quad_coord$long_min[q], quad_coord$long_max[q], quad_coord$lat_min[q], quad_coord$lat_max[q]))
 
 srtm <- crop(srtm, crop_extent)
 
@@ -536,6 +544,14 @@ plot(monthly_precip, col = palette_1)
 Sys.sleep(0.0001)
 setTxtProgressBar(pb, o)
 
+  }
+
+
+writeRaster(monthly_precip, filename = paste0("monthly_precip_", substr(end, 1, 4), "_q", q), format = "GTiff", overwrite = T)
+
+writeRaster(monthly_sd, filename = paste0("monthly_sd_", substr(end, 1, 4), "_q", q), format = "GTiff", overwrite = T)
+
+
 }
 
 
@@ -556,21 +572,11 @@ plot(station_xyz, add = T)
 
 #Export lapse rate, lapse uncertainty, and RMSE
 
-yearmonth <- "201910"
-
 lapse_export <- data.frame(lapse_rate_vector[(which(substr(days, 1, 10) == start)):(which(substr(days, 1, 10) == end))],
                 lapse_uncertainty_vector[(which(substr(days, 1, 10) == start)):(which(substr(days, 1, 10) == end))],
                 pred_rmse_mm[(which(substr(days, 1, 10) == start)):(which(substr(days, 1, 10) == end))])
 
 colnames(lapse_export) <- c("lapse_rate", "lapse_uncertainty", "pred_rmse_mm")
 
-write.csv(lapse_export, file = paste0("lapse_export_", yearmonth, ".csv"))
+write.csv(lapse_export, file = paste0("lapse_export_", substr(end, 1, 4), ".csv"))
 
-
-#Export rasters
-
-writeRaster(monthly_precip, filename = paste0("monthly_precip_", yearmonth), format = "GTiff", overwrite = T)
-
-writeRaster(monthly_sd, filename = paste0("monthly_sd_", yearmonth), format = "GTiff", overwrite = T)
-
-writeRaster(cv, filename = paste0("monthly_cv_", yearmonth), format = "GTiff", overwrite = T)
