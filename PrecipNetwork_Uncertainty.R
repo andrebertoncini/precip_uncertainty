@@ -23,7 +23,7 @@ station_info <- read.csv("Station_Info_Inside_Domain_20210727.csv")[,-c(1)]
 
 #Load quadrant information
 
-quad_coord <- read.csv("Quadrants_Coordinates_20220414.csv", sep = ";")[,-c(1)]
+quad_coord <- read.csv("Quadrants_Coordinates_20220416.csv", sep = ";")[,-c(1)]
 
 
 #Load DEM
@@ -34,7 +34,7 @@ srtm[srtm == -32768] <- NA
 srtm[srtm == 32767] <- NA
 
 
-for (q in 1:34) {
+for (q in 1:195) {
 
 #Crop DEM for faster processing
 
@@ -146,8 +146,8 @@ lapse_uncertainty_vector[2] <- lapse_uncertainty_vector[3]
 
 #Choose period
 
-start <- "1999-10-01"
-end <- "2000-09-30"
+start <- "2019-10-01"
+end <- "2020-09-30"
 
 pb <- txtProgressBar(min = which(substr(days, 1, 10) == start), max = which(substr(days, 1, 10) == end), style = 3)
 
@@ -291,7 +291,7 @@ vgm_model <- vgm$var_model
 
 pred.reg <- krige(precip_normal_dist ~ 1, normal_df, srtm_points, model = vgm_model, maxdist = 2, nmax = 8)
 
-if (substr(warnings()[length(warnings())], 1, 13) == "predict.gstat") {
+if (length(warnings()) > 0 && substr(warnings()[length(warnings())], 1, 13) == "predict.gstat") {
   
   vgm <- autofitVariogram(precip_normal_dist ~ 1, normal_df, model = c("Mat"))
   
@@ -363,7 +363,7 @@ vgm_model_zero <- vgm_zero$var_model
 
 pred.reg_zero <- krige(precip_zero ~ 1, precip_zero_df, srtm_points, model = vgm_model_zero, maxdist = 2, nmax = 8)
 
-if (substr(warnings()[length(warnings())], 1, 13) == "predict.gstat") {
+if (length(warnings()) > 0 && substr(warnings()[length(warnings())], 1, 13) == "predict.gstat") {
   
   vgm_zero <- autofitVariogram(precip_zero ~ 1, precip_zero_df, model = c("Mat"))
   
