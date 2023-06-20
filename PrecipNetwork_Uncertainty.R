@@ -8,7 +8,8 @@ library(RColorBrewer)
 library(MASS)
 
 
-setwd("/media/project/abertoncini/01_Precip_Network/01_3D_Variogram_20220125")
+setwd("/home/aberton/projects/rpp-kshook/aberton/precip_network/run_20220413")
+
 
 #Load precipitation data
 
@@ -28,13 +29,32 @@ quad_coord <- read.csv("Quadrants_Coordinates_20220416.csv", sep = ";")[,-c(1)]
 
 #Load DEM
 
-srtm <- raster("SRTM_90m_Tile_6.tif")
+srtm <- raster("SRTM_90m_VoidFilled_GEE_v1_Mosaic_Clip.tif")
 
 srtm[srtm == -32768] <- NA
 srtm[srtm == 32767] <- NA
 
 
-for (q in 1:195) {
+#Parallelization by spatial quadrant
+
+no_cores <- unlist(strsplit(Sys.getenv("NODESLIST"), split=" "))
+
+cl <- makeCluster(no_cores, type = "PSOCK")
+
+registerDoParallel(cl)
+
+foreach(q = 97:191) %dopar% {
+
+
+library(raster)
+library(ggplot2)
+library(gstat)
+library(automap)
+library(parallel)
+library(doParallel)
+library(RColorBrewer)
+library(MASS)
+
 
 #Crop DEM for faster processing
 
@@ -42,7 +62,7 @@ crop_extent <- extent(c(quad_coord$long_min[q], quad_coord$long_max[q], quad_coo
 
 srtm <- crop(srtm, crop_extent)
 
-plot(srtm)
+#plot(srtm)
 
 
 #Create data.frame with DEM xyz
@@ -136,12 +156,6 @@ for (o in (which(substr(days, 1, 10) == "1990-10-01")):(which(substr(days, 1, 10
   }
   
 }  
-
-lapse_rate_vector[1] <- lapse_rate_vector[3]
-lapse_rate_vector[2] <- lapse_rate_vector[3]
-
-lapse_uncertainty_vector[1] <- lapse_uncertainty_vector[3]
-lapse_uncertainty_vector[2] <- lapse_uncertainty_vector[3]
 
 
 #Choose period
@@ -246,10 +260,10 @@ for (n in 0:((length(duplica_index)/2)-1)) {
 #Check the transformation
 
 nontrans <- ecdf(precip_vector)
-plot(nontrans, main = "Nontransformed Daily Precipitation", ylab = "CDF [ ]", xlab = "Daily Precipitaiton [mm]")
+#plot(nontrans, main = "Nontransformed Daily Precipitation", ylab = "CDF [ ]", xlab = "Daily Precipitaiton [mm]")
 
 trans <- ecdf(precip_normal_dist)
-plot(trans, main = "Transformed Daily Precipitation", ylab = "CDF [ ]", xlab = "Daily Precipitaiton [ ]")
+#plot(trans, main = "Transformed Daily Precipitation", ylab = "CDF [ ]", xlab = "Daily Precipitaiton [ ]")
 
 
 #Create normarlly-distributed data frame
@@ -313,7 +327,7 @@ precip_raster_hor <- rasterFromXYZ(krig_precip)
 
 palette_1 <- brewer.pal(9, "YlGnBu")
 
-plot(precip_raster_hor, col = palette_1)
+#plot(precip_raster_hor, col = palette_1)
 
 
 krig_var <- data.frame(krig_output$x, krig_output$y, krig_output$var1.var)
@@ -324,7 +338,7 @@ var_raster_hor <- rasterFromXYZ(krig_var)
 
 palette_2 <- brewer.pal(11, "RdYlGn")
 
-plot(var_raster_hor, col = rev(palette_2))
+#plot(var_raster_hor, col = rev(palette_2))
 
 
 #Indicator kriging for zero precipitation
@@ -415,7 +429,7 @@ coordinates(station_xyz) <-  ~ x + y
 
 palette_1 <- brewer.pal(9, "YlGnBu")
 
-plot(monthly_precip, col = palette_1)
+#plot(monthly_precip, col = palette_1)
 
 
 #Interpolate precipitation using uncertainty weights
@@ -543,7 +557,7 @@ precip_lapsed_mm <- precip_mm*precip_lapse_multi
 
 precip_lapsed_mm[precip_lapsed_mm < 0] <- 0
 
-plot(precip_lapsed_mm, col = palette_1)
+#plot(precip_lapsed_mm, col = palette_1)
 
 
 precip_df_var <- data.frame(srtm_points@coords, pixel_lapse_unc_multiplier)
@@ -558,7 +572,7 @@ uncertainty_lapsed_mm <- uncertainty_mm*precip_lapse_sd_multi
 
 uncertainty_lapsed_mm[uncertainty_lapsed_mm < 0] <- 0
 
-plot(uncertainty_lapsed_mm, col = rev(palette_2))
+#plot(uncertainty_lapsed_mm, col = rev(palette_2))
 
 
 monthly_precip <- monthly_precip + precip_lapsed_mm
@@ -566,7 +580,7 @@ monthly_precip <- monthly_precip + precip_lapsed_mm
 monthly_sd <- monthly_sd + uncertainty_lapsed_mm
 
 
-plot(monthly_precip, col = palette_1)
+#plot(monthly_precip, col = palette_1)
 
 
 Sys.sleep(0.0001)
@@ -582,29 +596,30 @@ writeRaster(monthly_sd, filename = paste0("monthly_sd_", substr(end, 1, 4), "_q"
 
 }
 
+stopCluster(cl)
 
-plot(monthly_precip, col = palette_1)
-plot(station_xyz, add = T)
 
-plot(monthly_sd, col = rev(palette_2))
-plot(station_xyz, add = T)
+#plot(monthly_precip, col = palette_1)
+#plot(station_xyz, add = T)
+
+#plot(monthly_sd, col = rev(palette_2))
+#plot(station_xyz, add = T)
 
 
 #Calculate CV
 
-cv <- monthly_sd/monthly_precip
+#cv <- monthly_sd/monthly_precip
 
-plot(cv, col = rev(palette_2))
-plot(station_xyz, add = T)
+#plot(cv, col = rev(palette_2))
+#plot(station_xyz, add = T)
 
 
 #Export lapse rate, lapse uncertainty, and RMSE
 
-lapse_export <- data.frame(lapse_rate_vector[(which(substr(days, 1, 10) == start)):(which(substr(days, 1, 10) == end))],
-                lapse_uncertainty_vector[(which(substr(days, 1, 10) == start)):(which(substr(days, 1, 10) == end))],
-                pred_rmse_mm[(which(substr(days, 1, 10) == start)):(which(substr(days, 1, 10) == end))])
+#lapse_export <- data.frame(lapse_rate_vector[(which(substr(days, 1, 10) == start)):(which(substr(days, 1, 10) == end))],
+#                lapse_uncertainty_vector[(which(substr(days, 1, 10) == start)):(which(substr(days, 1, 10) == end))],
+#                pred_rmse_mm[(which(substr(days, 1, 10) == start)):(which(substr(days, 1, 10) == end))])
 
-colnames(lapse_export) <- c("lapse_rate", "lapse_uncertainty", "pred_rmse_mm")
+#colnames(lapse_export) <- c("lapse_rate", "lapse_uncertainty", "pred_rmse_mm")
 
-write.csv(lapse_export, file = paste0("lapse_export_", substr(end, 1, 4), ".csv"))
-
+#write.csv(lapse_export, file = paste0("lapse_export_", substr(end, 1, 4), ".csv"))
