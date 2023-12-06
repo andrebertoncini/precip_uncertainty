@@ -1,3 +1,8 @@
+#Code to generate precipitation fields and spatiotemporal and elevational uncertainty maps
+#by Andre Bertoncini
+#University of Saskatchewan - Centre for Hydrology
+#andre.bertoncini@usask.ca
+
 library(raster)
 library(gstat)
 library(automap)
@@ -5,32 +10,28 @@ library(parallel)
 library(doParallel)
 
 
-setwd("/media/project/abertoncini/01_Precip_Network/08_Chinook_Runs_20230724")
-
-#setwd("C:/Users/alb818/Dropbox/PHD/PRECIP_NETWORK/03_Precip_Network_20230621/00_Lapse_Check")
+setwd("Set folder with input files")
 
 
 #Load precipitation data
 
-precip_input <- read.csv("Precip_Undercatch_Corrected_20210727.csv")[,-c(1)]
+precip_input <- read.csv("CSV file with precipitation time series.csv")[,-c(1)]
 
 precip_input <- ifelse(as.matrix(precip_input) > 160, NA, as.matrix(precip_input)) #based on climate normals
 
 #Load station information
 
-station_info <- read.csv("Station_Info_Inside_Domain_20210727.csv")[,-c(1)]
+station_info <- read.csv("CSV file with station information (lat, long, elev).csv")[,-c(1)]
 
 
-#Load quadrant information
+#Load quadrant information (the code runs in parallel by spatial quadrants)
 
-quad_coord <- read.csv("Quadrants_Coordinates_20220416.csv", sep = ";")[,-c(1)]
+quad_coord <- read.csv("CSV file with quadrant coordinates.csv", sep = ";")[,-c(1)]
 
 
 #Load DEM
 
-srtm <- raster("SRTM_90m_VoidFilled_GEE_v1_Mosaic_Clip.tif")
-
-#srtm <- raster("SRTM_90m_Tile_6.tif")
+srtm <- raster("GeoTiff file with SRTM 90-m digital elevation model.tif")
 
 srtm[srtm == -32768] <- NA
 srtm[srtm == 32767] <- NA
@@ -82,9 +83,7 @@ foreach(q = qs[q_loop]:qe[q_loop]) %dopar% {
   coordinates(srtm_points) <- ~ x + y
   
   
-  #Select day to calculate variogram
-  
-  #Define available days
+  #Define analysis period
   
   days <- seq(as.POSIXct("1990-10-01", format = "%Y-%m-%d", tz = "GMT"),
               as.POSIXct("2020-09-30", format = "%Y-%m-%d", tz = "GMT"), by = 86400)
@@ -131,12 +130,12 @@ foreach(q = qs[q_loop]:qe[q_loop]) %dopar% {
     elev_diff_reg <- ifelse(elev_diff_reg > 0.2, elev_diff_reg, NA)
     
     
-    #reg test
+    #Calculate precipitation difference
     
     precip_reg <- (precip_date_inp[lapse_stations_higher] - precip_date_inp[lapse_stations_lower])/(precip_date_inp[lapse_stations_higher] + precip_date_inp[lapse_stations_lower])
     
-    #precip_reg <- (precip_date_inp[lapse_stations_higher]/precip_date_inp[lapse_stations_lower])
-    
+
+    #Generate lapse rate by calculating regression coefficients
     
     if (sum(precip_reg, na.rm = T) == 0 || sum(!is.na(precip_reg*elev_diff_reg)) < 3) {
       
@@ -194,16 +193,16 @@ foreach(q = qs[q_loop]:qe[q_loop]) %dopar% {
   }
   
   
-  #Choose period
+  #Choose analysis period
   
   start <- "2019-10-01"
   end <- "2020-09-30"
   
-  monthly_precip <- srtm
-  monthly_precip[monthly_precip > 0] <- 0
+  final_precip <- srtm
+  final_precip[final_precip > 0] <- 0
   
-  monthly_sd <- srtm
-  monthly_sd[monthly_sd > 0] <- 0
+  final_sd <- srtm
+  final_sd[final_sd > 0] <- 0
   
   pred_rmse_mm <- vector()
   
@@ -230,9 +229,6 @@ foreach(q = qs[q_loop]:qe[q_loop]) %dopar% {
     
     
     if (sum(precip_forloop > 0) > 1) {
-    
-  
-    #Lapse precipitation to minimum elevation
     
     lapse_rate <- lapse_rate_vector[o]
     lapse_uncertainty <- lapse_uncertainty_vector[o]
@@ -501,11 +497,7 @@ foreach(q = qs[q_loop]:qe[q_loop]) %dopar% {
     
     pixel_lapse_multiplier[pixel_lapse_multiplier > multiplier_cap] <- multiplier_cap
     
-    #pixel_lapse_unc_multiplier[pixel_lapse_unc_multiplier < 0] <- multiplier_cap
-    
     pixel_lapse_unc_multiplier[pixel_lapse_unc_multiplier > multiplier_cap] <- multiplier_cap
-    
-    #pixel_lapse_unc_multiplier[pixel_lapse_unc_multiplier < 0] <- multiplier_cap
     
     
     #Create reclassification matrix
@@ -538,12 +530,8 @@ foreach(q = qs[q_loop]:qe[q_loop]) %dopar% {
     rec_matrix <- cbind(c(precip_dist_extra[1], precip_dist_extra[-c(length(precip_dist_extra))]), precip_dist_extra, precip_mm_extra)
     
     
-    #Prediction RMSE
     
-    pred_rmse_mm[o] <- quantile(precip_vector, trans(vgm$sserr/length(normal_df$precip_normal_dist)))
-    
-    
-    #Interpolate precipitation
+    #Generate precipitation field in mm units
     
     precip_mm <- reclassify(precip_raster_hor, rec_matrix)
     
@@ -555,6 +543,8 @@ foreach(q = qs[q_loop]:qe[q_loop]) %dopar% {
     
     precip_lapsed_mm[precip_lapsed_mm < 0] <- 0
     
+
+    #Generate spatiotemporal and elevational standard deviation in mm units
     
     uncertainty_mm <- reclassify(sqrt(var_raster_hor), rec_matrix)
     
@@ -567,9 +557,9 @@ foreach(q = qs[q_loop]:qe[q_loop]) %dopar% {
     uncertainty_lapsed_mm[uncertainty_lapsed_mm < 0] <- 0
     
     
-    monthly_precip <- monthly_precip + precip_lapsed_mm
+    final_precip <- final_precip + precip_lapsed_mm
     
-    monthly_sd <- monthly_sd + uncertainty_lapsed_mm
+    final_sd <- final_sd + uncertainty_lapsed_mm
     
     
     } else {
@@ -580,9 +570,9 @@ foreach(q = qs[q_loop]:qe[q_loop]) %dopar% {
       uncertainty_lapsed_mm <- srtm
       uncertainty_lapsed_mm <- setValues(uncertainty_lapsed_mm, 0)
       
-      monthly_precip <- monthly_precip + precip_lapsed_mm
+      final_precip <- final_precip + precip_lapsed_mm
       
-      monthly_sd <- monthly_sd + uncertainty_lapsed_mm
+      final_sd <- final_sd + uncertainty_lapsed_mm
       
     }
       
@@ -590,9 +580,9 @@ foreach(q = qs[q_loop]:qe[q_loop]) %dopar% {
   }
   
   
-  writeRaster(monthly_precip, filename = paste0("/media/project/abertoncini/01_Precip_Network/08_Chinook_Runs_20230724/OUTPUTS/monthly_precip_20230628_", substr(end, 1, 4), "_q", q), format = "GTiff", overwrite = T)
+  writeRaster(final_precip, filename = paste0("Path to output folder/final_precip_", substr(end, 1, 4), "_q", q), format = "GTiff", overwrite = T)
   
-  writeRaster(monthly_sd, filename = paste0("/media/project/abertoncini/01_Precip_Network/08_Chinook_Runs_20230724/OUTPUTS/monthly_sd_20230628_", substr(end, 1, 4), "_q", q), format = "GTiff", overwrite = T)
+  writeRaster(final_sd, filename = paste0("Path to output folder/final_sd_", substr(end, 1, 4), "_q", q), format = "GTiff", overwrite = T)
   
   
 }
