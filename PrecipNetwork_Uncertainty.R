@@ -66,9 +66,7 @@ foreach(q = qs[q_loop]:qe[q_loop]) %dopar% {
   #Crop DEM for faster processing
   
   crop_extent <- extent(c(quad_coord$long_min[q], quad_coord$long_max[q], quad_coord$lat_min[q], quad_coord$lat_max[q]))
-  
-  #crop_extent <- extent(c(-115.3, -115.1, 50.85, 50.95))
-  
+ 
   srtm <- crop(srtm, crop_extent)
   
   #plot(srtm)
