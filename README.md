@@ -1,3 +1,3 @@
-# precip_uncertainty
+# Precipitation Spatiotemporal and Elevational Uncertainty
 
-A code to analyse daily precipitation gauge network spatial uncertainty in mountain environments.
+A code to generate precipitation kriging interpolated fields and spatiotemporal and elevational uncertainty from daily precipitation data and metadata (lat, long, elev). This code is intended to improve precipitation gauge network uncertainty estimation in mountain regions. The attached files "Precipitation_Undercatch_Corrected_202300811.csv" and "Precipitation_Gauge_Metadata.csv" can be used in conjunction with a DEM to generate the interpolated fields and uncertainty estimation for a large section of the Canadian Rockies between 1991 and 2020.
