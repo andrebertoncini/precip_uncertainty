@@ -1,0 +1,11 @@
+station_id;name;lat;long;elev;owner;distributor_id;operation_start;operation_end;province;instrument;undercatch;ta;rh;wspd;distributor
+170;Athabasca Moraine;52.21536;-117.2264;1966;University of Saskatchewan; ;2015;present;ALBERTA;alter-shielded weighing gauge;no;yes;yes;yes;University of Saskatchewan
+171;Bonsai;50.82089;-115.2139;2099;University of Saskatchewan; ;2013;present;ALBERTA;alter-shielded weighing gauge;no;yes;yes;yes;University of Saskatchewan
+173;Canadian Ridge North;50.82149;-115.2063;2205;University of Saskatchewan; ;2013;present;ALBERTA;alter-shielded weighing gauge;no;yes;yes;yes;University of Saskatchewan
+174;Fisera Ridge;50.9568;-115.2044;2325;University of Saskatchewan; ;2005;present;ALBERTA;alter-shielded weighing gauge;no;yes;yes;yes;University of Saskatchewan
+175;Fortress Ridge South;50.83878;-115.2155;2310;University of Saskatchewan; ;2013;present;ALBERTA;alter-shielded weighing gauge;no;yes;yes;yes;University of Saskatchewan
+176;Hay Meadow;50.94409;-115.1389;1437;University of Saskatchewan; ;2005;present;ALBERTA;alter-shielded weighing gauge;no;yes;yes;yes;University of Saskatchewan
+177;Helen Lake;51.69193;-116.4205;2545;University of Saskatchewan; ;2015;present;ALBERTA;alter-shielded weighing gauge;no;yes;yes;yes;University of Saskatchewan
+179;Peyto Hut Main;51.63052;-116.5327;2250;University of Saskatchewan; ;2016;present;BRITISH COLUMBIA;alter-shielded weighing gauge;no;yes;yes;yes;University of Saskatchewan
+180;Powerline;50.82589;-115.1982;2136;University of Saskatchewan; ;2013;present;ALBERTA;alter-shielded weighing gauge;no;yes;yes;yes;University of Saskatchewan
+181;Upper Clearing;50.95653;-115.1754;1845;University of Saskatchewan; ;2005;present;ALBERTA;alter-shielded weighing gauge;no;yes;yes;yes;University of Saskatchewan
